@@ -1,0 +1,86 @@
+- generic [active] [ref=f1e1]:
+  - banner [ref=f1e2]:
+    - link "VeriShield AI home" [ref=f1e3] [cursor=pointer]:
+      - /url: "#main-content"
+      - generic [ref=f1e8]:
+        - strong [ref=f1e9]: VeriShield AI
+        - generic [ref=f1e10]: Verification workspace
+    - generic [ref=f1e11]: Prototype intake Intake
+  - main [ref=f1e13]:
+    - generic [ref=f1e14]:
+      - region [ref=f1e15]:
+        - paragraph [ref=f1e16]: Multimodal verification intake
+        - heading "Start with the content in question." [level=1] [ref=f1e17]
+        - paragraph [ref=f1e18]: Submit a claim, public link, image, or video. VeriShield records the input first, then routes it toward independent signal and evidence checks.
+      - generic [ref=f1e19]:
+        - region [ref=f1e20]:
+          - generic [ref=f1e22]:
+            - paragraph [ref=f1e23]: New verification
+            - heading "Choose an input" [level=2] [ref=f1e24]
+          - tablist "Input type" [ref=f1e25]:
+            - tab "Text" [selected] [ref=f1e26] [cursor=pointer]
+            - tab "URL" [ref=f1e33] [cursor=pointer]
+            - tab "Image" [ref=f1e38] [cursor=pointer]
+            - tab "Video" [ref=f1e43] [cursor=pointer]
+          - tabpanel [ref=f1e47]:
+            - generic [ref=f1e48]:
+              - generic [ref=f1e49]:
+                - text: Claim, caption, or message
+                - generic [ref=f1e50]: 0 / 10,000
+              - textbox "Claim, caption, or message 0 / 10,000 Preserve dates, names, locations, and the original wording when possible." [ref=f1e51]:
+                - /placeholder: Paste the message or claim exactly as it appeared...
+              - generic [ref=f1e52]: Preserve dates, names, locations, and the original wording when possible.
+          - generic [ref=f1e53]:
+            - generic [ref=f1e54]:
+              - generic [ref=f1e55]: Report language
+              - combobox "Report language" [ref=f1e56]:
+                - option "English" [selected]
+                - option "Hindi"
+                - option "Tamil"
+                - option "Telugu"
+                - option "Malayalam"
+                - option "Bengali"
+            - button "Analyze content" [ref=f1e57] [cursor=pointer]
+          - paragraph [ref=f1e66]:
+            - strong [ref=f1e67]: No analysis submitted yet
+            - text: Your request receipt and processing status will appear here.
+        - complementary [ref=f1e68]:
+          - generic [ref=f1e69]:
+            - paragraph [ref=f1e70]: Evidence trace
+            - heading "Follow what the system knows" [level=2] [ref=f1e71]
+            - generic [ref=f1e72]: Each stage stays pending until the platform has produced inspectable output.
+          - list [ref=f1e73]:
+            - listitem [ref=f1e74]:
+              - generic [ref=f1e75]: "1"
+              - generic [ref=f1e77]:
+                - generic [ref=f1e78]:
+                  - strong [ref=f1e84]: Input
+                  - generic "ready" [ref=f1e85]
+                - paragraph [ref=f1e90]: Select a format and provide the content to verify.
+            - listitem [ref=f1e91]:
+              - generic [ref=f1e92]: "2"
+              - generic [ref=f1e94]:
+                - generic [ref=f1e95]:
+                  - strong [ref=f1e103]: Signals
+                  - generic "pending" [ref=f1e104]
+                - paragraph [ref=f1e109]: Claim and media signals begin after intake.
+            - listitem [ref=f1e110]:
+              - generic [ref=f1e111]: "3"
+              - generic [ref=f1e113]:
+                - generic [ref=f1e114]:
+                  - strong [ref=f1e120]: Sources
+                  - generic "pending" [ref=f1e121]
+                - paragraph [ref=f1e126]: Pending evidence retrieval. No sources are claimed at intake.
+            - listitem [ref=f1e127]:
+              - generic [ref=f1e128]: "4"
+              - generic [ref=f1e130]:
+                - generic [ref=f1e131]:
+                  - strong [ref=f1e139]: Verdict
+                  - generic "pending" [ref=f1e140]
+                - paragraph [ref=f1e145]: Pending structured findings, evidence, and confidence checks.
+          - paragraph [ref=f1e151]: VeriShield reports evidence and uncertainty. A genuine file does not make its caption true.
+      - generic [ref=f1e152]:
+        - generic [ref=f1e153]: Current stage
+        - paragraph [ref=f1e154]: Intake and persistence are active. Forensic models, evidence retrieval, and final credibility scoring connect to this request lifecycle next.
+  - button "Open Next.js Dev Tools" [ref=f1e160] [cursor=pointer]
+  - alert [ref=f1e165]

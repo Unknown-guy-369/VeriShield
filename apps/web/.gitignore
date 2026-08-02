@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Next.js and production output
+.next/
+out/
+dist/
+
+# Tests and tooling
+coverage/
+*.tsbuildinfo
+.eslintcache
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Hosting and logs
+.vercel/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Operating system and editors
+.DS_Store
+.idea/
+.vscode/

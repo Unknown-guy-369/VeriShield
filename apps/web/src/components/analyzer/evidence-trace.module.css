@@ -1,0 +1,186 @@
+.trace {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(24px, 4vw, 38px);
+  border-radius: 8px;
+  color: white;
+  background: var(--dark-navy);
+}
+
+.traceHeader > p {
+  margin: 0 0 12px;
+  color: #9acfc4;
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.traceHeader h2 {
+  margin: 0;
+  max-width: 360px;
+  font-family: var(--font-display), sans-serif;
+  font-size: clamp(24px, 3vw, 31px);
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
+.traceHeader > span {
+  display: block;
+  max-width: 430px;
+  margin-top: 12px;
+  color: #b6c2cd;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.stageList {
+  margin: 34px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stage {
+  min-height: 98px;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 14px;
+  position: relative;
+}
+
+.stage:not(:last-child) .rail::after {
+  content: "";
+  width: 1px;
+  position: absolute;
+  top: 27px;
+  bottom: 0;
+  left: 14px;
+  background: rgb(255 255 255 / 18%);
+}
+
+.rail {
+  position: relative;
+}
+
+.stageNumber {
+  width: 29px;
+  height: 29px;
+  display: grid;
+  place-items: center;
+  position: relative;
+  z-index: 1;
+  border: 1px solid rgb(255 255 255 / 24%);
+  border-radius: 999px;
+  color: #aebbc6;
+  background: var(--dark-navy);
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+}
+
+.stage[data-state="active"] .stageNumber,
+.stage[data-state="ready"] .stageNumber {
+  color: var(--dark-navy);
+  border-color: #9acfc4;
+  background: #9acfc4;
+}
+
+.stage[data-state="complete"] .stageNumber {
+  color: white;
+  border-color: #42a893;
+  background: #176655;
+}
+
+.stage[data-state="issue"] .stageNumber {
+  color: white;
+  border-color: var(--coral);
+  background: #7a3127;
+}
+
+.stageBody {
+  min-width: 0;
+  padding-bottom: 22px;
+}
+
+.stageTitle {
+  min-height: 29px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.stageTitle strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.stageIcon {
+  color: #8fc8bd;
+}
+
+.stateMark {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  margin-left: auto;
+  color: #aebbc6;
+}
+
+.stage[data-state="complete"] .stateMark {
+  color: #7fdbc8;
+}
+
+.stage[data-state="issue"] .stateMark {
+  color: var(--coral);
+}
+
+.stageBody p {
+  margin: 5px 0 0;
+  color: #aebbc6;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #7fdbc8;
+  box-shadow: 0 0 0 5px rgb(127 219 200 / 14%);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+.traceNote {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 20px;
+  border-top: 1px solid rgb(255 255 255 / 16%);
+  color: #b6c2cd;
+}
+
+.traceNote svg {
+  margin-top: 2px;
+  color: var(--coral);
+}
+
+.traceNote p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.55;
+    transform: scale(0.88);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse {
+    animation: none;
+  }
+}
