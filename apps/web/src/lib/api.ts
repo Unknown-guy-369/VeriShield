@@ -116,16 +116,19 @@ async function requestRecord(path: string, init?: RequestInit) {
 }
 
 export async function createAnalysis(input: CreateAnalysisRequest) {
-  if (input.type === "TEXT" || input.type === "URL") {
+  if (!input.file) {
     return requestRecord("/api/v1/analyses", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
+      body: JSON.stringify({
+        input: input.input,
+        preferredLanguage: input.preferredLanguage,
+      }),
     });
   }
 
   const formData = new FormData();
-  formData.append("type", input.type);
+  formData.append("input", input.input);
   formData.append("preferredLanguage", input.preferredLanguage);
   formData.append("file", input.file);
 

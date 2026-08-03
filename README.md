@@ -2,7 +2,7 @@
 
 VeriShield AI is a multimodal misinformation and deepfake verification platform for Indian audiences. It accepts text, URLs, images, and videos, analyzes each modality independently, retrieves relevant evidence, and produces a citation-backed report with calibrated uncertainty.
 
-The first vertical slice is implemented: a responsive Next.js intake workspace submits text, URLs, images, and videos to a modular FastAPI service. The API validates requests with Pydantic and records them through a SQLAlchemy repository and Supabase Storage adapter, with in-memory and local-file fallbacks for credential-free development.
+The first vertical slice is implemented: a responsive Next.js composer submits one investigation prompt with an optional image or video attachment to a modular FastAPI service. The API classifies the modality, validates requests with Pydantic, and records them through a SQLAlchemy repository and Supabase Storage adapter, with in-memory and local-file fallbacks for credential-free development.
 
 ## Hackathon Context
 
@@ -31,7 +31,7 @@ This distinction handles a common misinformation pattern: genuine media shared w
 
 ## Prototype Experience
 
-The first screen is the working verification console. A user pastes text or a URL, or uploads an image or short video. The interface then shows analysis progress, a content preview, separate score dimensions, supporting and contradicting evidence, suspicious image regions or video timestamps, limitations, and a human-review recommendation.
+The first screen is the working verification console. A user enters a claim or URL in one field and may attach an image or short video with a specific verification question. The backend classifier routes the request as text, URL, image, or video. The interface then shows analysis progress, a content preview, separate score dimensions, supporting and contradicting evidence, suspicious image regions or video timestamps, limitations, and a human-review recommendation.
 
 Citizen mode prioritizes a clear verdict and readable explanation. Investigator mode exposes evidence details, model signals, source metadata, and review controls. The 24-hour prototype implements one shared responsive workspace rather than separate applications.
 
@@ -253,11 +253,11 @@ No detector can reliably identify every new generator. Compression, cropping, fi
 
 ## Current State
 
-The multimodal intake foundation is working end to end. Text and URL JSON requests and image/video multipart requests can be created and polled through the shared API. The current response represents request intake and lifecycle state; media-forensics models, text evidence retrieval, credibility scoring, and final reports are the next parallel workstreams.
+The multimodal intake foundation is working end to end. One prompt plus an optional attachment is classified as text, URL, image, or video and can be polled through the shared API. Media objects use `analyses/{analysis_id}/input.{ext}`, keeping database and storage identity aligned. The current response represents request intake and lifecycle state; media-forensics models, text evidence retrieval, credibility scoring, and final reports are the next parallel workstreams.
 
 Verification completed for the current slice:
 
 - Frontend lint, strict TypeScript, unit tests, and production build.
-- Backend Ruff lint, strict MyPy checks, six Pytest endpoint tests, and Alembic migration review.
+- Backend Ruff lint, 12 Pytest cases, and Alembic migration review.
 - Browser submission from the Next.js UI to the FastAPI service.
 - Desktop and 390px mobile visual checks.

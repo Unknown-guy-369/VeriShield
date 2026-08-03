@@ -1,4 +1,5 @@
 from pathlib import Path
+from uuid import uuid4
 
 import httpx
 import pytest
@@ -22,9 +23,15 @@ async def test_falls_back_to_local_storage_on_transport_error(tmp_path: Path) ->
         primary=UnavailableStorageAdapter(),
         fallback=LocalStorageAdapter(tmp_path / "uploads"),
     )
-    payload = UploadPayload(content=b"test image", extension="png", mime_type="image/png")
+    analysis_id = uuid4()
+    payload = UploadPayload(
+        analysis_id=analysis_id,
+        content=b"test image",
+        extension="png",
+        mime_type="image/png",
+    )
 
     stored = await storage.save(payload)
 
-    assert stored.storage_path.startswith("local://")
+    assert stored.storage_path == f"local://analyses/{analysis_id}/input.png"
     await storage.remove(stored)

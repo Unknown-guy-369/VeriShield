@@ -80,7 +80,7 @@ export function EvidenceTrace({
         ? `${record.type.toLowerCase()} received and stored as a traceable request.`
         : phase === "submitting"
           ? "Transferring content to the secure intake API."
-          : "Select a format and provide the content to verify.",
+          : "Add a claim, public link, or media attachment to verify.",
       icon: UploadCloud,
     },
     {

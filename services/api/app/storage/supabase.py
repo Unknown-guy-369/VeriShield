@@ -1,6 +1,4 @@
 import asyncio
-from datetime import UTC, datetime
-from uuid import uuid4
 
 from supabase import Client, create_client
 
@@ -13,8 +11,7 @@ class SupabaseStorageAdapter(StorageAdapter):
         self.bucket = bucket
 
     async def save(self, payload: UploadPayload) -> StoredObject:
-        day = datetime.now(UTC).strftime("%Y/%m/%d")
-        object_key = f"analyses/{day}/{uuid4()}.{payload.extension}"
+        object_key = payload.object_key
 
         def upload() -> None:
             self.client.storage.from_(self.bucket).upload(

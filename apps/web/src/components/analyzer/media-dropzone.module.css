@@ -1,123 +1,105 @@
-.dropzone {
-  min-height: 284px;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 14px;
-  padding: 32px;
-  border: 1px dashed #a6adb5;
+.composer {
+  position: relative;
+  overflow: hidden;
+  margin-top: 28px;
+  border: 1px solid #aeb2b7;
   border-radius: 8px;
-  background: #fbfcfc;
-  transition: border-color 160ms ease, background-color 160ms ease;
+  background: #fcfcfb;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
-.dropzone.dragActive {
+.composer:focus-within {
+  border-color: var(--focus-blue);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-blue) 12%, transparent);
+}
+
+.composer.dragActive {
   border-color: var(--action-blue);
-  background: var(--pale-blue);
 }
 
-.dropLabel {
-  display: grid;
-  justify-items: center;
-  gap: 14px;
-  text-align: center;
-  cursor: pointer;
-  max-width: 360px;
+.promptHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px 0;
 }
 
-.dropLabel strong,
-.dropLabel small {
-  display: block;
-  letter-spacing: 0;
-}
-
-.dropLabel strong {
+.promptHeader label {
   color: var(--ink);
-  font-size: 17px;
+  font-size: 13px;
   font-weight: 600;
 }
 
-.dropLabel small {
+.promptHeader span {
   color: var(--muted-text);
-  font-size: 14px;
-  margin-top: 4px;
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
 }
 
-.uploadIcon {
-  width: 52px;
-  height: 52px;
-  display: grid;
-  place-items: center;
-  color: var(--deep-green);
-  background: var(--pale-green);
-  border-radius: 8px;
+.composer textarea {
+  width: 100%;
+  min-height: 176px;
+  display: block;
+  resize: vertical;
+  padding: 12px 18px 20px;
+  border: 0;
+  outline: 0;
+  color: var(--ink);
+  background: transparent;
+  font-size: 15px;
+  line-height: 1.6;
 }
 
-.browse {
-  min-height: 40px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border-radius: 999px;
-  color: white;
-  background: var(--ink);
-  font-size: 14px;
-  font-weight: 600;
+.composer textarea::placeholder {
+  color: #858991;
 }
 
-.dropzone > p {
-  color: var(--muted-text);
-  font-size: 12px;
-  text-align: center;
-}
-
-.selected {
+.attachment {
+  margin: 0 16px 16px;
   overflow: hidden;
   border: 1px solid var(--hairline);
-  border-radius: 8px;
+  border-radius: 7px;
+  background: white;
 }
 
 .preview {
-  min-height: 290px;
-  max-height: 430px;
+  min-height: 210px;
+  max-height: 360px;
   aspect-ratio: 16 / 9;
   position: relative;
   display: grid;
   place-items: center;
   overflow: hidden;
-  border-radius: 18px;
   background: var(--dark-navy);
 }
 
-.preview img {
+.preview img,
+.preview video {
   object-fit: contain;
 }
 
 .preview video {
   width: 100%;
   height: 100%;
-  object-fit: contain;
 }
 
 .fileRow {
-  min-height: 72px;
+  min-height: 64px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  background: white;
+  gap: 11px;
+  padding: 10px 12px;
 }
 
 .fileIcon {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
+  border-radius: 6px;
   color: var(--deep-green);
   background: var(--pale-green);
-  border-radius: 6px;
 }
 
 .fileCopy {
@@ -130,28 +112,22 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  letter-spacing: 0;
 }
 
 .fileCopy strong {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
 }
 
 .fileCopy small {
   margin-top: 3px;
   color: var(--muted-text);
-  font-size: 12px;
+  font-size: 11px;
 }
 
-.actions {
-  display: flex;
-  gap: 6px;
-}
-
-.iconButton {
-  width: 40px;
-  height: 40px;
+.removeButton {
+  width: 38px;
+  height: 38px;
   display: grid;
   place-items: center;
   border: 1px solid var(--hairline);
@@ -161,33 +137,90 @@
   cursor: pointer;
 }
 
-.iconButton:hover:not(:disabled) {
-  border-color: var(--slate);
+.removeButton:hover:not(:disabled) {
+  color: var(--error);
+  border-color: color-mix(in srgb, var(--error) 42%, var(--hairline));
 }
 
-.iconButton:disabled {
+.toolbar {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 12px;
+  border-top: 1px solid var(--hairline);
+  background: #f7f7f5;
+}
+
+.attachmentActions {
+  display: flex;
+  gap: 7px;
+}
+
+.attachmentActions button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 11px;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  color: var(--ink);
+  background: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.attachmentActions button:hover:not(:disabled) {
+  border-color: var(--action-blue);
+  color: var(--action-blue);
+}
+
+.attachmentActions button:disabled,
+.removeButton:disabled {
+  cursor: wait;
   opacity: 0.5;
-  cursor: not-allowed;
+}
+
+.inputSignal {
+  color: var(--muted-text);
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.dropOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--action-blue);
+  color: var(--action-blue);
+  background: color-mix(in srgb, var(--pale-blue) 92%, transparent);
+  font-size: 15px;
+  font-weight: 700;
+  pointer-events: none;
 }
 
 @media (max-width: 560px) {
-  .dropzone {
-    min-height: 250px;
-    padding: 24px 16px;
+  .composer textarea {
+    min-height: 156px;
+  }
+
+  .toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 9px;
+  }
+
+  .inputSignal {
+    padding-left: 2px;
   }
 
   .preview {
-    min-height: 220px;
-  }
-
-  .fileRow {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .actions {
-    grid-column: 1 / -1;
-    justify-content: flex-end;
-    border-top: 1px solid var(--hairline);
-    padding-top: 10px;
+    min-height: 180px;
   }
 }

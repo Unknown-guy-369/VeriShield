@@ -1,12 +1,18 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from uuid import UUID
 
 
 @dataclass(frozen=True, slots=True)
 class UploadPayload:
+    analysis_id: UUID
     content: bytes
     extension: str
     mime_type: str
+
+    @property
+    def object_key(self) -> str:
+        return f"analyses/{self.analysis_id}/input.{self.extension}"
 
 
 @dataclass(frozen=True, slots=True)

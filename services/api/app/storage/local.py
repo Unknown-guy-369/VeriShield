@@ -1,6 +1,5 @@
 import asyncio
 from pathlib import Path
-from uuid import uuid4
 
 from app.storage.base import StorageAdapter, StoredObject, UploadPayload
 
@@ -10,7 +9,7 @@ class LocalStorageAdapter(StorageAdapter):
         self.root = root.resolve()
 
     async def save(self, payload: UploadPayload) -> StoredObject:
-        object_key = f"{uuid4()}.{payload.extension}"
+        object_key = payload.object_key
         target = self.root / object_key
         await asyncio.to_thread(target.parent.mkdir, parents=True, exist_ok=True)
         await asyncio.to_thread(target.write_bytes, payload.content)

@@ -1,10 +1,11 @@
 from pathlib import Path
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from starlette.datastructures import UploadFile
 
 from app.core.config import Settings
 from app.core.errors import AppError
+from app.modules.analyses.classifier import InputClassifier
 from app.modules.analyses.media_signature import detect_media_signature
 from app.modules.analyses.repository import AnalysisRepository
 from app.modules.analyses.schemas import (
@@ -35,49 +36,58 @@ class AnalysisService:
         request: CreateAnalysisRequest,
         upload: UploadFile | None = None,
     ) -> AnalysisRecord:
-        if request.type is AnalysisType.TEXT:
-            self._reject_unexpected_file(upload)
-            text = request.text or ""
-            if len(text) > self.settings.text_max_length:
-                raise AppError(400, "TEXT_TOO_LONG", "The submitted text is too long.")
-            return await self.repository.create(
-                CreateAnalysisData(
-                    type=request.type,
-                    text=text,
-                    preferred_language=request.preferred_language,
-                )
-            )
-
-        if request.type is AnalysisType.URL:
-            self._reject_unexpected_file(upload)
-            return await self.repository.create(
-                CreateAnalysisData(
-                    type=request.type,
-                    source_url=str(request.source_url),
-                    preferred_language=request.preferred_language,
-                )
-            )
+        input_text = request.input
+        if input_text and len(input_text) > self.settings.text_max_length:
+            raise AppError(400, "TEXT_TOO_LONG", "The submitted text is too long.")
 
         if upload is None:
-            label = "image" if request.type is AnalysisType.IMAGE else "video"
-            raise AppError(400, "FILE_REQUIRED", f"A {label} file is required.")
+            if input_text is None:
+                raise AppError(
+                    400,
+                    "INPUT_REQUIRED",
+                    "Enter a claim or URL, or attach an image or video.",
+                )
+            classified = InputClassifier.classify_text(input_text)
+            if classified.type is AnalysisType.TEXT and len(input_text) < 10:
+                raise AppError(
+                    400,
+                    "INPUT_TOO_SHORT",
+                    "Enter at least 10 characters so there is enough context to analyze.",
+                )
+            return await self.repository.create(
+                CreateAnalysisData(
+                    type=classified.type,
+                    text=classified.text,
+                    source_url=classified.source_url,
+                    preferred_language=request.preferred_language,
+                )
+            )
 
-        size_limit = self._size_limit(request.type)
-        content = await upload.read(size_limit + 1)
+        content = await upload.read(self.settings.upload_max_mb * 1024 * 1024 + 1)
+        if len(content) > self.settings.upload_max_mb * 1024 * 1024:
+            raise AppError(
+                413,
+                "UPLOAD_TOO_LARGE",
+                "The uploaded file exceeds the configured size limit.",
+            )
+
+        detected = detect_media_signature(content)
+        classified = InputClassifier.classify_media(detected.mime_type, input_text)
+        self._validate_media_type(classified.type, upload.content_type)
+        size_limit = self._size_limit(classified.type)
         if len(content) > size_limit:
             raise AppError(
                 413,
                 "UPLOAD_TOO_LARGE",
-                f"The uploaded {request.type.value.lower()} exceeds the configured size limit.",
+                f"The uploaded {classified.type.value.lower()} exceeds the configured size limit.",
             )
 
-        detected = detect_media_signature(content)
-        self._validate_media_type(request.type, upload.content_type, detected.mime_type)
-
+        analysis_id = uuid4()
         stored: StoredObject | None = None
         try:
             stored = await self.storage.save(
                 UploadPayload(
+                    analysis_id=analysis_id,
                     content=content,
                     extension=detected.extension,
                     mime_type=detected.mime_type,
@@ -86,8 +96,10 @@ class AnalysisService:
             filename = Path(upload.filename or "upload").name[:255]
             return await self.repository.create(
                 CreateAnalysisData(
-                    type=request.type,
+                    id=analysis_id,
+                    type=classified.type,
                     preferred_language=request.preferred_language,
+                    text=classified.text,
                     original_file_name=filename,
                     mime_type=detected.mime_type,
                     file_size=len(content),
@@ -116,18 +128,12 @@ class AnalysisService:
         return megabytes * 1024 * 1024
 
     @staticmethod
-    def _reject_unexpected_file(upload: UploadFile | None) -> None:
-        if upload is not None:
-            raise AppError(400, "UNEXPECTED_FILE", "Files are accepted only for IMAGE or VIDEO.")
-
-    @staticmethod
     def _validate_media_type(
         analysis_type: AnalysisType,
         claimed_mime_type: str | None,
-        detected_mime_type: str,
     ) -> None:
         allowed = IMAGE_MIME_TYPES if analysis_type is AnalysisType.IMAGE else VIDEO_MIME_TYPES
-        if claimed_mime_type not in allowed or detected_mime_type not in allowed:
+        if claimed_mime_type and claimed_mime_type not in allowed:
             raise AppError(
                 400,
                 "MEDIA_TYPE_MISMATCH",

@@ -1,7 +1,7 @@
 import asyncio
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -32,7 +32,6 @@ class MemoryAnalysisRepository(AnalysisRepository):
     async def create(self, data: CreateAnalysisData) -> AnalysisRecord:
         now = datetime.now(UTC)
         record = AnalysisRecord(
-            id=uuid4(),
             status=AnalysisStatus.QUEUED,
             progress=10,
             created_at=now,

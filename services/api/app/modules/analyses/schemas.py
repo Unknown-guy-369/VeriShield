@@ -1,9 +1,8 @@
 from datetime import datetime
 from enum import StrEnum
-from typing import Self
-from uuid import UUID
+from uuid import UUID, uuid4
 
-from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 def to_camel(value: str) -> str:
@@ -38,27 +37,16 @@ class AnalysisStatus(StrEnum):
 
 
 class CreateAnalysisRequest(ApiModel):
-    type: AnalysisType
-    text: str | None = None
-    source_url: AnyHttpUrl | None = None
+    input: str | None = None
     preferred_language: str = Field(default="en", pattern=r"^[a-z]{2,3}(?:-[A-Z]{2})?$")
 
-    @model_validator(mode="after")
-    def validate_modality_fields(self) -> Self:
-        if self.type is AnalysisType.TEXT:
-            if self.text is None or len(self.text.strip()) < 10:
-                raise ValueError("Text analyses require at least 10 characters of text.")
-            self.text = self.text.strip()
-            if self.source_url is not None:
-                raise ValueError("Text analyses do not accept sourceUrl.")
-        elif self.type is AnalysisType.URL:
-            if self.source_url is None:
-                raise ValueError("URL analyses require a valid HTTP or HTTPS sourceUrl.")
-            if self.text is not None:
-                raise ValueError("URL analyses do not accept text.")
-        elif self.text is not None or self.source_url is not None:
-            raise ValueError("Image and video analyses accept media files only.")
-        return self
+    @field_validator("input")
+    @classmethod
+    def normalize_input(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
 
 
 class AnalysisRecord(ApiModel):
@@ -78,6 +66,7 @@ class AnalysisRecord(ApiModel):
 
 
 class CreateAnalysisData(BaseModel):
+    id: UUID = Field(default_factory=uuid4)
     type: AnalysisType
     preferred_language: str
     text: str | None = None

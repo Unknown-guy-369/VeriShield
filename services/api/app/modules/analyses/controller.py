@@ -35,7 +35,7 @@ async def create_analysis(
         upload_value = form.get("file")
         upload = upload_value if isinstance(upload_value, UploadFile) else None
         payload = {
-            "type": form.get("type"),
+            "input": form.get("input"),
             "preferredLanguage": form.get("preferredLanguage", "en"),
         }
     elif content_type.startswith("application/json"):

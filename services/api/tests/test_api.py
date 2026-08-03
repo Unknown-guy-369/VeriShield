@@ -30,8 +30,7 @@ def test_creates_and_retrieves_text_analysis(tmp_path: Path) -> None:
         created = client.post(
             "/api/v1/analyses",
             json={
-                "type": "TEXT",
-                "text": "A complete claim that should be checked against reliable sources.",
+                "input": "A complete claim that should be checked against reliable sources.",
                 "preferredLanguage": "en",
             },
         )
@@ -45,19 +44,33 @@ def test_creates_and_retrieves_text_analysis(tmp_path: Path) -> None:
     assert fetched.json()["id"] == created.json()["id"]
 
 
-def test_rejects_missing_text_and_invalid_urls(tmp_path: Path) -> None:
+def test_classifies_public_url_without_user_selected_type(tmp_path: Path) -> None:
     with create_test_client(tmp_path) as client:
-        missing_text = client.post(
+        response = client.post(
             "/api/v1/analyses",
-            json={"type": "TEXT", "preferredLanguage": "en"},
-        )
-        invalid_url = client.post(
-            "/api/v1/analyses",
-            json={"type": "URL", "sourceUrl": "not-a-url", "preferredLanguage": "en"},
+            json={"input": "https://example.com/public-post", "preferredLanguage": "en"},
         )
 
-    assert missing_text.status_code == 400
-    assert invalid_url.status_code == 400
+    assert response.status_code == 201
+    assert response.json()["type"] == "URL"
+    assert response.json()["sourceUrl"] == "https://example.com/public-post"
+
+
+def test_rejects_empty_and_short_unattached_input(tmp_path: Path) -> None:
+    with create_test_client(tmp_path) as client:
+        missing_input = client.post(
+            "/api/v1/analyses",
+            json={"preferredLanguage": "en"},
+        )
+        short_input = client.post(
+            "/api/v1/analyses",
+            json={"input": "short", "preferredLanguage": "en"},
+        )
+
+    assert missing_input.status_code == 400
+    assert missing_input.json()["code"] == "INPUT_REQUIRED"
+    assert short_input.status_code == 400
+    assert short_input.json()["code"] == "INPUT_TOO_SHORT"
 
 
 def test_accepts_signature_valid_png_upload(tmp_path: Path) -> None:
@@ -65,21 +78,27 @@ def test_accepts_signature_valid_png_upload(tmp_path: Path) -> None:
     with create_test_client(tmp_path) as client:
         response = client.post(
             "/api/v1/analyses",
-            data={"type": "IMAGE", "preferredLanguage": "en"},
+            data={
+                "input": "Check whether this image was manipulated.",
+                "preferredLanguage": "en",
+            },
             files={"file": ("sample.png", png, "image/png")},
         )
 
     assert response.status_code == 201
     assert response.json()["type"] == "IMAGE"
+    assert response.json()["text"] == "Check whether this image was manipulated."
     assert response.json()["mimeType"] == "image/png"
-    assert response.json()["storagePath"].startswith("local://")
+    assert response.json()["storagePath"] == (
+        f"local://analyses/{response.json()['id']}/input.png"
+    )
 
 
 def test_rejects_mismatched_media_content(tmp_path: Path) -> None:
     with create_test_client(tmp_path) as client:
         response = client.post(
             "/api/v1/analyses",
-            data={"type": "IMAGE", "preferredLanguage": "en"},
+            data={"input": "Check this attachment", "preferredLanguage": "en"},
             files={"file": ("fake.png", b"not an image", "image/png")},
         )
     assert response.status_code == 400

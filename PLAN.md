@@ -91,11 +91,12 @@ These are conceptual contracts to implement as Pydantic schemas, TypeScript inte
 
 ```text
 AnalysisRequest
-- input_type: text | url | image | video
-- text?: string
-- source_url?: string
-- upload_id?: string
+- input?: string
+- attachment?: image | video
 - preferred_language: string
+
+The API classifier derives `input_type` from a verified attachment signature, a complete
+HTTP(S) URL, or text fallback. Media storage uses `analyses/{analysis_id}/input.{ext}`.
 
 AnalysisJob
 - id: string
@@ -232,14 +233,20 @@ Update this table according to `RULES.md` throughout the sprint.
 | Repository initialization and contracts | Wegener + Codex | DONE | Shared workspace | FastAPI modules, Pydantic schemas, SQLAlchemy models | 2026-08-02 | Configure remote Supabase URL and apply the Alembic migration |
 | Media forensics | Member 1 | NOT STARTED | TBD | `MediaAnalysisResult` | - | Assign member name and select model adapter |
 | Text and evidence | Member 2 | NOT STARTED | TBD | `TextAnalysisResult`, `EvidenceItem[]` | - | Assign member name and confirm provider keys |
-| UI, orchestration, and integration | Anscombe + Codex | DONE | Shared workspace | Next.js intake workspace and typed API client | 2026-08-02 | Extend lifecycle UI when analysis result contracts land |
-| End-to-end verification and demo | Codex | IN PROGRESS | Shared workspace | Intake scenarios | 2026-08-02 | Intake is verified; add text and media result fixtures next |
+| UI, orchestration, and integration | Anscombe + Codex | DONE | Shared workspace | Unified Next.js composer, classifier-owned API contract | 2026-08-03 | Extend lifecycle UI when analysis result contracts land |
+| End-to-end verification and demo | Codex | IN PROGRESS | Shared workspace | Unified intake scenarios | 2026-08-03 | Add text and media result fixtures next |
 
 ## Activity Log
 
 Append compact updates here using the format in `RULES.md`. Keep the newest entry first.
 
 ```text
+[2026-08-03] Codex - Unified classified intake - DONE
+Changed: replaced manual modality tabs with one prompt and optional media attachment; storage keys now use analyses/{analysis_id}/input.{ext}
+Verified: backend Ruff and 12 Pytest cases; frontend lint and unit tests
+Blocked by: media-forensics and evidence workers are not connected yet
+Next: connect classifier routes to the text, image, and video worker modules
+
 [2026-08-02] Codex - Backend correction to FastAPI - DONE
 Changed: replaced NestJS/Prisma runtime with FastAPI, Pydantic, SQLAlchemy async, Alembic, and Supabase Storage
 Verified: Ruff, strict MyPy, six Pytest cases, live text/URL/image requests, and Next.js browser submission

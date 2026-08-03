@@ -16,25 +16,8 @@ export interface AnalysisRecord {
   updatedAt: string;
 }
 
-export type TextAnalysisRequest = {
-  type: "TEXT";
-  text: string;
+export type CreateAnalysisRequest = {
+  input: string;
+  file?: File | null;
   preferredLanguage: string;
 };
-
-export type UrlAnalysisRequest = {
-  type: "URL";
-  sourceUrl: string;
-  preferredLanguage: string;
-};
-
-export type MediaAnalysisRequest = {
-  type: "IMAGE" | "VIDEO";
-  file: File;
-  preferredLanguage: string;
-};
-
-export type CreateAnalysisRequest =
-  | TextAnalysisRequest
-  | UrlAnalysisRequest
-  | MediaAnalysisRequest;
