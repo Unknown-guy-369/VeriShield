@@ -232,7 +232,7 @@ Update this table according to `RULES.md` throughout the sprint.
 | Planning and documentation | Codex | DONE | Current workspace | Root Markdown files | 2026-08-02 | Keep status current during specialist work |
 | Repository initialization and contracts | Wegener + Codex | DONE | Shared workspace | FastAPI modules, Pydantic schemas, SQLAlchemy models | 2026-08-02 | Configure remote Supabase URL and apply the Alembic migration |
 | Media forensics | Rajath | NOT STARTED | `abishekpriyanm369/nod-7-build-image-and-video-deepfake-forensic-analysis-module` | `MediaAnalysisResult`, image/video forensic module | 2026-08-03 | Start Linear NOD-7 and select a CPU-safe pretrained model adapter |
-| Text and evidence | Member 2 | NOT STARTED | TBD | `TextAnalysisResult`, `EvidenceItem[]` | - | Assign member name and confirm provider keys |
+| Text and evidence | Sivabalan | NOT STARTED | `abishekpriyanm369/nod-8-build-claim-verification-web-evidence-retrieval-and` | `TextAnalysisResult`, `EvidenceItem[]`, credibility scoring | 2026-08-03 | Start Linear NOD-8 and confirm evidence/search provider credentials |
 | UI, orchestration, and integration | Anscombe + Codex | DONE | Shared workspace | Unified Next.js composer, classifier-owned API contract | 2026-08-03 | Extend lifecycle UI when analysis result contracts land |
 | End-to-end verification and demo | Codex | IN PROGRESS | Shared workspace | Unified intake scenarios | 2026-08-03 | Add text and media result fixtures next |
 
@@ -241,6 +241,12 @@ Update this table according to `RULES.md` throughout the sprint.
 Append compact updates here using the format in `RULES.md`. Keep the newest entry first.
 
 ```text
+[2026-08-03] Codex - Claim verification handoff - NOT STARTED
+Changed: assigned claim extraction, bounded web evidence retrieval, stance analysis, and credibility scoring to Sivabalan in Linear NOD-8
+Verified: issue is linked to the Z-AI project, proof-of-concept milestone, and sibling media issue NOD-7 with High priority
+Blocked by: provider credentials are not confirmed; deterministic fake providers allow local implementation to start
+Next: Sivabalan starts NOD-8, confirms provider adapters, and marks this workstream IN PROGRESS
+
 [2026-08-03] Codex - Media forensics handoff - NOT STARTED
 Changed: assigned image/video deepfake forensic MVP to Rajath in Linear NOD-7 with module boundaries, lifecycle integration, tests, and acceptance criteria
 Verified: issue is linked to the Z-AI project and proof-of-concept milestone with High priority
