@@ -232,7 +232,7 @@ Update this table according to `RULES.md` throughout the sprint.
 | Planning and documentation | Codex | DONE | Current workspace | Root Markdown files | 2026-08-02 | Keep status current during specialist work |
 | Repository initialization and contracts | Wegener + Codex | DONE | Shared workspace | FastAPI modules, Pydantic schemas, SQLAlchemy models | 2026-08-02 | Configure remote Supabase URL and apply the Alembic migration |
 | Media forensics | Rajath | NOT STARTED | `abishekpriyanm369/nod-7-build-image-and-video-deepfake-forensic-analysis-module` | `MediaAnalysisResult`, image/video forensic module | 2026-08-03 | Start Linear NOD-7 and select a CPU-safe pretrained model adapter |
-| Text and evidence | Sivabalan | NOT STARTED | `abishekpriyanm369/nod-8-build-claim-verification-web-evidence-retrieval-and` | `TextAnalysisResult`, `EvidenceItem[]`, credibility scoring | 2026-08-03 | Start Linear NOD-8 and confirm evidence/search provider credentials |
+| Text and evidence | Sivabalan | REVIEW | `abishekpriyanm369/nod-8-build-claim-verification-web-evidence-retrieval-and` | `claim_extractor.py`, `query_planner.py`, `evidence_retriever.py`, `stance_classifier.py`, `credibility_scorer.py` | 2026-08-03 06:13 UTC | Pipeline implementation is complete; install backend test dependencies to run pytest and ruff in this workspace |
 | UI, orchestration, and integration | Anscombe + Codex | DONE | Shared workspace | Unified Next.js composer, classifier-owned API contract | 2026-08-03 | Extend lifecycle UI when analysis result contracts land |
 | End-to-end verification and demo | Codex | IN PROGRESS | Shared workspace | Unified intake scenarios | 2026-08-03 | Add text and media result fixtures next |
 
@@ -241,6 +241,18 @@ Update this table according to `RULES.md` throughout the sprint.
 Append compact updates here using the format in `RULES.md`. Keep the newest entry first.
 
 ```text
+[2026-08-03 06:13 UTC] Codex - Text evidence pipeline build - REVIEW
+Changed: added claim extraction, query planning, secure evidence retrieval, stance classification, deterministic scoring, provider adapters, and fixture-backed pipeline smoke coverage
+Verified: `python -m compileall app tests` and a direct fixture pipeline smoke run (`1 3 100 supported`)
+Blocked by: `pytest` and `ruff` are not installed in the bundled Python runtime, so the full backend test suite could not run here
+Next: install the backend dev dependencies, run pytest and ruff, and wire the pipeline into the analysis service when the shared report contract is ready
+
+[2026-08-03 05:58 UTC] Codex - Text evidence pipeline build - IN PROGRESS
+Changed: claimed the member-2 text/evidence workstream and began implementing claim extraction, query planning, secure retrieval, stance classification, and deterministic scoring modules
+Verified: repository layout, current API contract, and backend test surface
+Blocked by: none; the pipeline can start with offline fixtures and local adapters
+Next: add the new modules, wire deterministic fixtures, and run focused backend tests
+
 [2026-08-03] Codex - Claim verification handoff - NOT STARTED
 Changed: assigned claim extraction, bounded web evidence retrieval, stance analysis, and credibility scoring to Sivabalan in Linear NOD-8
 Verified: issue is linked to the Z-AI project, proof-of-concept milestone, and sibling media issue NOD-7 with High priority
