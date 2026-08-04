@@ -13,6 +13,7 @@ from app.modules.analyses.text_pipeline.schemas import SearchResult
 
 class GoogleFactCheckProvider(EvidenceProvider):
     name = "google_fact_check"
+    provider_hints = ("fact_check",)
 
     def __init__(self, api_key: str, *, timeout_seconds: float = 10.0) -> None:
         self.api_key = api_key

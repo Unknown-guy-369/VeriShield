@@ -234,13 +234,49 @@ Update this table according to `RULES.md` throughout the sprint.
 | Media forensics | Rajath | NOT STARTED | `abishekpriyanm369/nod-7-build-image-and-video-deepfake-forensic-analysis-module` | `MediaAnalysisResult`, image/video forensic module | 2026-08-03 | Start Linear NOD-7 and select a CPU-safe pretrained model adapter |
 | Text and evidence | Sivabalan | REVIEW | `abishekpriyanm369/nod-8-build-claim-verification-web-evidence-retrieval-and` | `claim_extractor.py`, `query_planner.py`, `evidence_retriever.py`, `stance_classifier.py`, `credibility_scorer.py` | 2026-08-03 06:13 UTC | Pipeline implementation is complete; install backend test dependencies to run pytest and ruff in this workspace |
 | UI, orchestration, and integration | Anscombe + Codex | DONE | Shared workspace | Unified Next.js composer, classifier-owned API contract | 2026-08-03 | Extend lifecycle UI when analysis result contracts land |
-| End-to-end verification and demo | Codex | IN PROGRESS | Shared workspace | Unified intake scenarios | 2026-08-03 | Add text and media result fixtures next |
+| End-to-end verification and demo | Codex | IN PROGRESS | Shared workspace | Analysis lifecycle, text report endpoint, evidence trace, process logging, provider-backed text pipeline, and result panel | 2026-08-04 | Add FactCheck/WebSearch/cross-exam provider architecture with fixture fallback |
 
 ## Activity Log
 
 Append compact updates here using the format in `RULES.md`. Keep the newest entry first.
 
 ```text
+[2026-08-04 09:20 UTC] Codex - Provider-backed text architecture - IN PROGRESS
+Changed: preparing FactCheck -> Tavily/Exa web search -> cross-exam pipeline selection, URL text extraction, and sanitized env examples
+Verified: existing provider hint mismatch found; fixture-only service path identified
+Blocked by: none
+Next: patch provider adapters, settings, service orchestration, tests, and docs
+
+[2026-08-04 07:35 UTC] Codex - Main page result rendering - REVIEW
+Changed: rendered completed text claims, overall stance, credibility score, reasoning, and cited evidence in the request receipt; added a missing-result diagnostic state
+Verified: frontend TypeScript and backend compileall pass
+Blocked by: live browser/API verification remains blocked by the project `.venv` pointing to unavailable WindowsApps Python 3.13
+Next: restart backend/frontend and submit a new text request to inspect the result panel
+
+[2026-08-04 07:10 UTC] Codex - Analysis process logging - REVIEW
+Changed: added standard INFO logs for intake acceptance, worker scheduling, ANALYZING, RETRIEVING, SCORING, completion, report reads, and failure tracebacks keyed by analysis ID
+Verified: backend compileall and frontend TypeScript check pass; log markers are present in controller and service
+Blocked by: live API logging remains unverified because the project `.venv` points to unavailable WindowsApps Python 3.13
+Next: run the backend with `uvicorn app.main:app --log-level info` and trace one new analysis ID
+
+[2026-08-04 07:00 UTC] Codex - Analysis process logging - IN PROGRESS
+Changed: preparing request, stage, completion, and failure logs keyed by analysis ID
+Verified: existing lifecycle has one controller-owned background task and no project-specific logger
+Blocked by: none
+Next: add standard logging markers and run backend/frontend checks
+
+[2026-08-04 06:30 UTC] Codex - Text lifecycle integration - REVIEW
+Changed: scheduled text processing after intake, added lifecycle progress updates, JSON-safe persisted results, `GET /analyses/{id}/report`, frontend evidence/verdict states, and an API regression test
+Verified: bundled Python compileall, frontend TypeScript check, and fixture pipeline smoke test (`1 claim, 3 evidence, 1 score, supported, 100`)
+Blocked by: the project `.venv` points to unavailable WindowsApps Python 3.13; ESLint hangs in the restricted desktop runtime; live FastAPI smoke and full pytest remain unrun
+Next: run `pytest`, `ruff`, and the API smoke test in a working backend virtual environment
+
+[2026-08-04 00:00 UTC] Codex - Text lifecycle integration - IN PROGRESS
+Changed: tracing the queued-only analysis flow and preparing service, controller, API type, and evidence-trace integration
+Verified: text pipeline exists but `process_analysis()` is not scheduled after intake; current UI only polls the queued record
+Blocked by: none
+Next: schedule text processing, add the report endpoint, and verify completed evidence and score output
+
 [2026-08-03 06:13 UTC] Codex - Text evidence pipeline build - REVIEW
 Changed: added claim extraction, query planning, secure evidence retrieval, stance classification, deterministic scoring, provider adapters, and fixture-backed pipeline smoke coverage
 Verified: `python -m compileall app tests` and a direct fixture pipeline smoke run (`1 3 100 supported`)

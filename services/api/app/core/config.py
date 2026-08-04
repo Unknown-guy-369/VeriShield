@@ -28,11 +28,28 @@ class Settings(BaseSettings):
     supabase_storage_bucket: str = "analysis-inputs"
     local_upload_dir: Path = Path(".data/uploads")
 
+    google_fact_check_api_key: str | None = None
+    tavily_api_key: str | None = None
+    exa_api_key: str | None = None
+    search_api_key: str | None = None
+    llm_api_key: str | None = None
+    llm_endpoint: str | None = None
+    llm_model: str = "gpt-4o-mini"
+    text_pipeline_fixture_fallback: bool = True
+    evidence_search_timeout_seconds: float = 8.0
+    evidence_fetch_timeout_seconds: float = 8.0
+
     @field_validator(
         "database_url",
         "migration_database_url",
         "supabase_url",
         "supabase_secret_key",
+        "google_fact_check_api_key",
+        "tavily_api_key",
+        "exa_api_key",
+        "search_api_key",
+        "llm_api_key",
+        "llm_endpoint",
         mode="before",
     )
     @classmethod
@@ -45,6 +62,12 @@ class Settings(BaseSettings):
             "MIGRATION_DATABASE_URL",
             "SUPABASE_URL",
             "SUPABASE_SECRET_KEY",
+            "GOOGLE_FACT_CHECK_API_KEY",
+            "TAVILY_API_KEY",
+            "EXA_API_KEY",
+            "SEARCH_API_KEY",
+            "LLM_API_KEY",
+            "LLM_ENDPOINT",
         )
         for env_name in environment_names:
             prefix = f"{env_name}="

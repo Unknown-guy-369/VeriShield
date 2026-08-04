@@ -61,6 +61,7 @@ class AnalysisRecord(ApiModel):
     mime_type: str | None = None
     file_size: int | None = None
     storage_path: str | None = None
+    result: dict | None = None
     created_at: datetime
     updated_at: datetime
 

@@ -1,8 +1,9 @@
 import json
+import logging
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from pydantic import ValidationError
 from starlette.datastructures import UploadFile
 
@@ -12,6 +13,7 @@ from app.modules.analyses.schemas import AnalysisRecord, CreateAnalysisRequest
 from app.modules.analyses.service import AnalysisService
 
 router = APIRouter(prefix="/analyses", tags=["analyses"])
+logger = logging.getLogger(__name__)
 
 
 def validate_payload(payload: Any) -> CreateAnalysisRequest:
@@ -25,6 +27,7 @@ def validate_payload(payload: Any) -> CreateAnalysisRequest:
 @router.post("", response_model=AnalysisRecord, status_code=201)
 async def create_analysis(
     request: Request,
+    background_tasks: BackgroundTasks,
     service: Annotated[AnalysisService, Depends(get_analysis_service)],
 ) -> AnalysisRecord:
     content_type = request.headers.get("content-type", "").lower()
@@ -54,7 +57,17 @@ async def create_analysis(
             "Use application/json or multipart/form-data.",
         )
 
-    return await service.create(validate_payload(payload), upload)
+    record = await service.create(validate_payload(payload), upload)
+    logger.info(
+        "analysis accepted id=%s type=%s status=%s progress=%s",
+        record.id,
+        record.type.value,
+        record.status.value,
+        record.progress,
+    )
+    background_tasks.add_task(service.process_analysis, record.id)
+    logger.info("analysis worker scheduled id=%s worker=text_pipeline", record.id)
+    return record
 
 
 @router.get("/{analysis_id}", response_model=AnalysisRecord)
@@ -63,3 +76,19 @@ async def get_analysis(
     service: Annotated[AnalysisService, Depends(get_analysis_service)],
 ) -> AnalysisRecord:
     return await service.find_one(analysis_id)
+
+
+@router.get("/{analysis_id}/report", response_model=AnalysisRecord)
+async def get_analysis_report(
+    analysis_id: UUID,
+    service: Annotated[AnalysisService, Depends(get_analysis_service)],
+) -> AnalysisRecord:
+    report = await service.find_report(analysis_id)
+    logger.info(
+        "analysis report requested id=%s status=%s progress=%s has_result=%s",
+        report.id,
+        report.status.value,
+        report.progress,
+        report.result is not None,
+    )
+    return report

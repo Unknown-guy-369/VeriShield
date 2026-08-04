@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import ipaddress
+import logging
 import re
 import socket
 import urllib.error
@@ -10,8 +11,8 @@ import urllib.request
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from html.parser import HTMLParser
-from typing import Protocol
-from urllib.parse import ParseResult, parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
+from typing import Any, Protocol
+from urllib.parse import ParseResult, SplitResult, parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 
 from app.modules.analyses.text_pipeline.providers.base import EvidenceProvider
 from app.modules.analyses.text_pipeline.schemas import (
@@ -23,6 +24,7 @@ from app.modules.analyses.text_pipeline.schemas import (
 
 TRACKING_PARAM_PREFIXES = ("utm_", "fbclid", "gclid", "mc_cid", "mc_eid")
 DEFAULT_TIMEOUT_SECONDS = 8.0
+logger = logging.getLogger(__name__)
 
 
 class TextPipelineError(Exception):
@@ -60,6 +62,7 @@ class SecureHttpFetcher:
                 },
             )
             response, status, headers = self._open_request(opener, request)
+            # pyrefly: ignore [missing-attribute]
             if 300 <= status < 400 and headers.get("Location"):
                 current_url = self._validate_public_http_url(urljoin(current_url, headers["Location"]))
                 if response is not None:
@@ -99,7 +102,7 @@ class SecureHttpFetcher:
         self,
         opener: urllib.request.OpenerDirector,
         request: urllib.request.Request,
-    ) -> tuple[urllib.response.addinfourl | urllib.error.HTTPError | None, int, object]:
+    ) -> tuple[Any, int, Any]:
         try:
             response = opener.open(request, timeout=self.timeout_seconds)
             status = getattr(response, "status", 200)
@@ -128,11 +131,13 @@ class SecureHttpFetcher:
         if not addresses:
             raise TextPipelineError(400, "UNRESOLVABLE_HOST", "The evidence host could not be resolved.")
         for address in addresses:
-            if self._is_blocked_ip(address):
+            # pyrefly: ignore [bad-argument-type]
+            if self._is_blocked_ip(str(address)):
                 raise TextPipelineError(400, "PRIVATE_URL_BLOCKED", "Private or loopback IP addresses are not allowed.")
+        # pyrefly: ignore [bad-argument-type]
         return self._canonical_url(parsed)
 
-    def _canonical_url(self, parsed: ParseResult) -> str:
+    def _canonical_url(self, parsed: SplitResult) -> str:
         query = [
             (key, value)
             for key, value in parse_qsl(parsed.query, keep_blank_values=True)
@@ -240,11 +245,32 @@ class EvidenceRetriever:
             claim_counts.setdefault(plan.claim_id, 0)
             for query in plan.queries:
                 for provider in self.providers:
-                    if query.provider_hints and provider.name not in query.provider_hints:
+                    provider_names = {provider.name, *provider.provider_hints}
+                    if query.provider_hints and provider_names.isdisjoint(query.provider_hints):
                         continue
-                    results = await provider.search(query.query, limit=self.max_results_per_query)
+                    try:
+                        results = await provider.search(query.query, limit=self.max_results_per_query)
+                    except Exception as error:
+                        logger.warning(
+                            "evidence provider failed provider=%s claim_id=%s query=%r error=%s",
+                            provider.name,
+                            plan.claim_id,
+                            query.query,
+                            error,
+                        )
+                        continue
                     for result in results:
-                        item = await self._convert_result(plan.claim_id, query.query, result)
+                        try:
+                            item = await self._convert_result(plan.claim_id, query.query, result)
+                        except Exception as error:
+                            logger.warning(
+                                "evidence result skipped provider=%s claim_id=%s url=%s error=%s",
+                                result.provider_name,
+                                plan.claim_id,
+                                result.url,
+                                error,
+                            )
+                            continue
                         if item is None or item.dedupe_key in seen:
                             continue
                         seen.add(item.dedupe_key)
@@ -265,11 +291,17 @@ class EvidenceRetriever:
         publisher = result.publisher
         passage = result.snippet.strip()
         if result.fetchable:
-            fetched_title, fetched_publisher, fetched_published_at, fetched_passage = await self.fetcher.fetch(result.url)
-            title = fetched_title or title
-            publisher = fetched_publisher or publisher
-            published_at = fetched_published_at or published_at
-            passage = fetched_passage or passage
+            try:
+                fetched_title, fetched_publisher, fetched_published_at, fetched_passage = await self.fetcher.fetch(
+                    result.url
+                )
+                title = fetched_title or title
+                publisher = fetched_publisher or publisher
+                published_at = fetched_published_at or published_at
+                passage = fetched_passage or passage
+            except TextPipelineError:
+                if not passage:
+                    raise
         source_reliability = self._source_reliability(result.provider_name, result.publisher, result.url)
         relevance = max(0.0, min(1.0, result.relevance_hint))
         retrieval_confidence = max(0.0, min(1.0, 0.55 + relevance * 0.35 + (source_reliability / 100) * 0.1))
@@ -324,6 +356,8 @@ class EvidenceRetriever:
             score += 35
         if provider_name == "fixture":
             score += 15
+        if provider_name in {"tavily", "exa"}:
+            score += 10
         if host.endswith(".gov") or host.endswith(".gov.in") or ".gov." in host:
             score += 20
         if host.endswith(".edu") or ".edu." in host:

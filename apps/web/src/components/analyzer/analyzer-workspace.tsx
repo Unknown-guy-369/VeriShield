@@ -172,8 +172,8 @@ export function AnalyzerWorkspace() {
       <footer className={styles.footerNote}>
         <span>Current stage</span>
         <p>
-          Intake classification and persistence are active. Forensic models, evidence
-          retrieval, and final credibility scoring connect to this lifecycle next.
+          Intake, text evidence retrieval, stance analysis, and deterministic scoring
+          run through the same traceable analysis lifecycle.
         </p>
       </footer>
     </div>

@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -42,6 +43,33 @@ def test_creates_and_retrieves_text_analysis(tmp_path: Path) -> None:
     assert created.json()["progress"] == 10
     assert fetched.status_code == 200
     assert fetched.json()["id"] == created.json()["id"]
+
+
+def test_processes_text_and_exposes_report(tmp_path: Path) -> None:
+    with create_test_client(tmp_path) as client:
+        created = client.post(
+            "/api/v1/analyses",
+            json={
+                "input": "The government announced free laptops for eligible students.",
+                "preferredLanguage": "en",
+            },
+        )
+        analysis_id = created.json()["id"]
+        latest = created
+        for _ in range(20):
+            latest = client.get(f"/api/v1/analyses/{analysis_id}")
+            if latest.json()["status"] in {"COMPLETED", "FAILED"}:
+                break
+            time.sleep(0.01)
+        report = client.get(f"/api/v1/analyses/{analysis_id}/report")
+
+    assert created.status_code == 201
+    assert latest.json()["status"] == "COMPLETED"
+    assert latest.json()["progress"] == 100
+    assert report.status_code == 200
+    assert len(report.json()["result"]["claims"]) == 1
+    assert len(report.json()["result"]["evidence"]) >= 1
+    assert len(report.json()["result"]["scores"]) == 1
 
 
 def test_classifies_public_url_without_user_selected_type(tmp_path: Path) -> None:

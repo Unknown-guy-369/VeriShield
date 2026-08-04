@@ -4,6 +4,7 @@ import {
   Check,
   CheckCircle2,
   Clipboard,
+  ExternalLink,
   LoaderCircle,
   ServerCrash,
   WifiOff,
@@ -83,6 +84,23 @@ export function RequestReceipt({
   if (!record) return null;
 
   const progress = clampProgress(record.progress);
+  const result = record.result;
+  const scoreForClaim = (claimId: string) =>
+    result?.scores.find((score) => score.claim_id === claimId);
+  const stanceForClaim = (claimId: string) =>
+    result?.stances.find((stance) => stance.claim_id === claimId);
+  const evidenceForClaim = (claimId: string) =>
+    result?.evidence.filter((item) => item.claim_id === claimId) ?? [];
+
+  const overallStance = result?.stances.some((stance) => stance.stance === "contradicted")
+    ? "Contradicted"
+    : result?.stances.some((stance) => stance.stance === "supported")
+      ? "Supported"
+      : "Insufficient evidence";
+  const overallScore = result && result.scores.length > 0
+    ? Math.round(result.scores.reduce((total, item) => total + item.score, 0) / result.scores.length)
+    : null;
+
   return (
     <section className={styles.receipt} aria-labelledby="request-receipt-title">
       <div className={styles.receiptHeader}>
@@ -142,6 +160,67 @@ export function RequestReceipt({
           <dd>{new Date(record.createdAt).toLocaleString()}</dd>
         </div>
       </dl>
+
+      {result && result.claims.length > 0 && (
+        <section className={styles.report} aria-labelledby="analysis-result-title">
+          <div className={styles.reportHeader}>
+            <div>
+              <p className={styles.reportEyebrow}>Verification result</p>
+              <h3 id="analysis-result-title">{overallStance}</h3>
+            </div>
+            {overallScore !== null && (
+              <div className={styles.scoreBadge}>
+                <strong>{overallScore}</strong>
+                <span>/ 100 credibility</span>
+              </div>
+            )}
+          </div>
+
+          <div className={styles.claimList}>
+            {result.claims.map((claim) => {
+              const stance = stanceForClaim(claim.id);
+              const score = scoreForClaim(claim.id);
+              const evidence = evidenceForClaim(claim.id);
+              return (
+                <article className={styles.claim} key={claim.id}>
+                  <div className={styles.claimHeader}>
+                    <p>{claim.text}</p>
+                    <span data-stance={stance?.stance ?? "insufficient"}>
+                      {stance?.stance ?? "insufficient"}
+                    </span>
+                  </div>
+                  <div className={styles.claimMeta}>
+                    <span>{score?.score ?? 0}/100 score</span>
+                    <span>{evidence.length} source{evidence.length === 1 ? "" : "s"}</span>
+                  </div>
+                  {stance?.reasoning && <p className={styles.reasoning}>{stance.reasoning}</p>}
+                  {evidence.length > 0 && (
+                    <ul className={styles.sourceList}>
+                      {evidence.map((item) => (
+                        <li key={item.id}>
+                          <a href={item.url} target="_blank" rel="noreferrer">
+                            <span>{item.title}</span>
+                            <ExternalLink size={13} aria-hidden="true" />
+                          </a>
+                          <small>{item.publisher ?? item.provider_name ?? "Evidence provider"}</small>
+                          {item.passage && <p>{item.passage}</p>}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {record.type === "TEXT" && record.status === "COMPLETED" && !result && (
+        <p className={styles.partial}>
+          Processing completed, but the API returned no structured verification result.
+          Check the backend logs for this request ID.
+        </p>
+      )}
 
       {liveUpdatesPaused && (
         <p className={styles.partial}>
