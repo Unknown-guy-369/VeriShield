@@ -29,3 +29,7 @@ class StorageAdapter(ABC):
     @abstractmethod
     async def remove(self, stored: StoredObject) -> None:
         raise NotImplementedError
+
+    @abstractmethod
+    async def read(self, object_key: str) -> bytes:
+        raise NotImplementedError

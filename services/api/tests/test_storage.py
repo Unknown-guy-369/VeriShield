@@ -16,6 +16,9 @@ class UnavailableStorageAdapter(StorageAdapter):
     async def remove(self, stored: StoredObject) -> None:
         raise AssertionError("The unavailable primary adapter should not remove fallback files.")
 
+    async def read(self, object_key: str) -> bytes:
+        raise httpx.ReadError("Temporary read failure")
+
 
 @pytest.mark.asyncio
 async def test_falls_back_to_local_storage_on_transport_error(tmp_path: Path) -> None:
