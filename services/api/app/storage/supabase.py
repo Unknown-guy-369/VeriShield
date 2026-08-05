@@ -32,3 +32,8 @@ class SupabaseStorageAdapter(StorageAdapter):
             self.client.storage.from_(self.bucket).remove,
             [stored.object_key],
         )
+
+    async def read(self, object_key: str) -> bytes:
+        def download() -> bytes:
+            return self.client.storage.from_(self.bucket).download(object_key)
+        return await asyncio.to_thread(download)
