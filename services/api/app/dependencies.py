@@ -40,6 +40,7 @@ class AppContainer:
         )
         supabase_url = settings.supabase_url
         supabase_secret_key = settings.supabase_secret_key
+        storage: StorageAdapter
         if (
             settings.supabase_storage_configured
             and supabase_url is not None

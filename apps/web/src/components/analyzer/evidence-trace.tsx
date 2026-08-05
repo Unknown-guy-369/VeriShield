@@ -28,6 +28,9 @@ function getStageStates(
 ) {
   const normalizedStatus = record?.status.toUpperCase() ?? "";
   const terminal = terminalStatuses.has(normalizedStatus);
+  const evidenceCount = record?.result?.evidence.length ?? 0;
+  const scoreCount = record?.result?.scores.length ?? 0;
+  const hasResult = Boolean(record?.result);
 
   return {
     input:
@@ -48,8 +51,22 @@ function getStageStates(
             : record
               ? ("active" as const)
               : ("pending" as const),
-    sources: "pending" as const,
-    verdict: "pending" as const,
+    sources:
+      normalizedStatus === "FAILED"
+        ? ("issue" as const)
+        : hasResult && terminal
+          ? ("complete" as const)
+          : normalizedStatus === "RETRIEVING"
+            ? ("active" as const)
+            : ("pending" as const),
+    verdict:
+      normalizedStatus === "FAILED"
+        ? ("issue" as const)
+        : hasResult && terminal
+          ? ("complete" as const)
+          : normalizedStatus === "SCORING"
+            ? ("active" as const)
+            : ("pending" as const),
   };
 }
 
@@ -66,6 +83,9 @@ export function EvidenceTrace({
   liveUpdatesPaused,
 }: EvidenceTraceProps) {
   const states = getStageStates(phase, record, liveUpdatesPaused);
+  const normalizedStatus = record?.status.toUpperCase() ?? "";
+  const evidenceCount = record?.result?.evidence.length ?? 0;
+  const scoreCount = record?.result?.scores.length ?? 0;
   const statusLabel = record?.status.toLowerCase().replaceAll("_", " ");
   const stages: Array<{
     key: keyof typeof states;
@@ -96,13 +116,25 @@ export function EvidenceTrace({
     {
       key: "sources",
       label: "Sources",
-      description: "Pending evidence retrieval. No sources are claimed at intake.",
+      description: record?.result
+        ? evidenceCount > 0
+          ? `${evidenceCount} evidence source${evidenceCount === 1 ? "" : "s"} retrieved and deduplicated.`
+          : "No matching sources were found; the result is marked insufficient."
+        : normalizedStatus === "RETRIEVING"
+          ? "Searching bounded evidence providers for claim support."
+          : "Pending evidence retrieval.",
       icon: BookOpenCheck,
     },
     {
       key: "verdict",
       label: "Verdict",
-      description: "Pending structured findings, evidence, and confidence checks.",
+      description: record?.result && scoreCount > 0
+        ? `Deterministic credibility score calculated for ${scoreCount} claim${scoreCount === 1 ? "" : "s"}.`
+        : record?.result
+          ? "No verifiable claims were scored; review the evidence limitations."
+          : normalizedStatus === "SCORING"
+          ? "Comparing evidence stance and source reliability."
+          : "Pending structured findings, evidence, and confidence checks.",
       icon: Scale,
     },
   ];
