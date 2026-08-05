@@ -1,13 +1,14 @@
 import asyncio
 
-from supabase import Client, create_client
+from typing import Any
+from supabase import create_client
 
 from app.storage.base import StorageAdapter, StoredObject, UploadPayload
 
 
 class SupabaseStorageAdapter(StorageAdapter):
     def __init__(self, url: str, secret_key: str, bucket: str) -> None:
-        self.client: Client = create_client(url, secret_key)
+        self.client: Any = create_client(url, secret_key)
         self.bucket = bucket
 
     async def save(self, payload: UploadPayload) -> StoredObject:

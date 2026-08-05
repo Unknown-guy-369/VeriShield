@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -12,6 +13,7 @@ from app.modules.analyses.schemas import AnalysisRecord, AnalysisType, CreateAna
 from app.modules.analyses.service import AnalysisService
 
 router = APIRouter(prefix="/analyses", tags=["analyses"])
+logger = logging.getLogger(__name__)
 
 
 def validate_payload(payload: Any) -> CreateAnalysisRequest:
@@ -64,6 +66,15 @@ async def create_analysis(
         media_service = get_media_forensics_service(request)
         background_tasks.add_task(media_service.process_media, record.id)
         
+    logger.info(
+        "analysis accepted id=%s type=%s status=%s progress=%s",
+        record.id,
+        record.type.value,
+        record.status.value,
+        record.progress,
+    )
+    background_tasks.add_task(service.process_analysis, record.id)
+    logger.info("analysis worker scheduled id=%s worker=text_pipeline", record.id)
     return record
 
 
@@ -86,3 +97,17 @@ async def get_media_forensics(
     if not result:
         raise AppError(404, "NOT_FOUND", "Media forensics result not found or not completed yet.")
     return result
+@router.get("/{analysis_id}/report", response_model=AnalysisRecord)
+async def get_analysis_report(
+    analysis_id: UUID,
+    service: Annotated[AnalysisService, Depends(get_analysis_service)],
+) -> AnalysisRecord:
+    report = await service.find_report(analysis_id)
+    logger.info(
+        "analysis report requested id=%s status=%s progress=%s has_result=%s",
+        report.id,
+        report.status.value,
+        report.progress,
+        report.result is not None,
+    )
+    return report

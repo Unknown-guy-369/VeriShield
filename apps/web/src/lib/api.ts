@@ -141,3 +141,7 @@ export async function createAnalysis(input: CreateAnalysisRequest) {
 export async function getAnalysis(id: string) {
   return requestRecord(`/api/v1/analyses/${encodeURIComponent(id)}`);
 }
+
+export async function getAnalysisReport(id: string) {
+  return requestRecord(`/api/v1/analyses/${encodeURIComponent(id)}/report`);
+}

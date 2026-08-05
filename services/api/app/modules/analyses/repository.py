@@ -24,7 +24,7 @@ class AnalysisRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def update_status(self, analysis_id: UUID, status: AnalysisStatus, progress: int) -> None:
+    async def update(self, analysis_id: UUID, status: AnalysisStatus, progress: int, result: dict | None = None) -> AnalysisRecord | None:
         raise NotImplementedError
 
 
@@ -50,15 +50,19 @@ class MemoryAnalysisRepository(AnalysisRepository):
         async with self._lock:
             return self._records.get(analysis_id)
 
-    async def update_status(self, analysis_id: UUID, status: AnalysisStatus, progress: int) -> None:
+    async def update(self, analysis_id: UUID, status: AnalysisStatus, progress: int, result: dict | None = None) -> AnalysisRecord | None:
         async with self._lock:
             record = self._records.get(analysis_id)
-            if record:
-                # AnalysisRecord is immutable, so we must recreate it or update the dict
-                # Wait, AnalysisRecord is a pydantic model, it's mutable by default unless frozen
-                record.status = status
-                record.progress = progress
-                record.updated_at = datetime.now(UTC)
+            if not record:
+                return None
+            updated = record.model_copy(update={
+                "status": status,
+                "progress": progress,
+                "result": result,
+                "updated_at": datetime.now(UTC),
+            })
+            self._records[analysis_id] = updated
+            return updated
 
 
 def model_to_record(model: AnalysisModel) -> AnalysisRecord:
@@ -74,6 +78,7 @@ def model_to_record(model: AnalysisModel) -> AnalysisRecord:
         mime_type=model.mime_type,
         file_size=model.file_size,
         storage_path=model.storage_path,
+        result=model.result,
         created_at=model.created_at,
         updated_at=model.updated_at,
     )
@@ -97,11 +102,15 @@ class SqlAlchemyAnalysisRepository(AnalysisRepository):
             )
         return model_to_record(model) if model else None
 
-    async def update_status(self, analysis_id: UUID, status: AnalysisStatus, progress: int) -> None:
-        from sqlalchemy import update
+    async def update(self, analysis_id: UUID, status: AnalysisStatus, progress: int, result: dict | None = None) -> AnalysisRecord | None:
         async with self._session_factory.begin() as session:
-            await session.execute(
-                update(AnalysisModel)
-                .where(AnalysisModel.id == analysis_id)
-                .values(status=status, progress=progress, updated_at=datetime.now(UTC))
+            model = await session.scalar(
+                select(AnalysisModel).where(AnalysisModel.id == analysis_id).with_for_update()
             )
+            if not model:
+                return None
+            model.status = status
+            model.progress = progress
+            model.result = result
+            await session.flush()
+            return model_to_record(model)

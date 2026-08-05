@@ -9,6 +9,7 @@ description = "FastAPI intake and orchestration API for VeriShield AI"
 requires-python = ">=3.12"
 dependencies = [
   "fastapi>=0.116,<1",
+  "httpx>=0.28,<1",
   "psycopg[binary]>=3.2,<4",
   "pydantic>=2.11,<3",
   "pydantic-settings>=2.10,<3",
