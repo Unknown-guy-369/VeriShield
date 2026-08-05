@@ -1,9 +1,19 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import TypedDict
 
 from app.modules.analyses.text_pipeline.providers.base import EvidenceProvider
 from app.modules.analyses.text_pipeline.schemas import SearchResult
+
+
+class _FixtureRecord(TypedDict):
+    title: str
+    url: str
+    publisher: str
+    published_at: datetime
+    snippet: str
+    queries: set[str]
 
 
 class FixtureEvidenceProvider(EvidenceProvider):
@@ -11,13 +21,16 @@ class FixtureEvidenceProvider(EvidenceProvider):
 
     def __init__(self) -> None:
         now = datetime(2026, 8, 3, tzinfo=UTC)
-        self._index = (
+        self._index: tuple[_FixtureRecord, ...] = (
             {
                 "title": "Government confirms free laptop rollout for eligible students",
                 "url": "https://state.gov.in/education/free-laptops-announcement",
                 "publisher": "Department of Education",
                 "published_at": now,
-                "snippet": "The department announced a phased laptop distribution program for eligible students.",
+                "snippet": (
+                    "The department announced a phased laptop distribution program "
+                    "for eligible students."
+                ),
                 "queries": {"free laptop", "education", "eligible students", "announced"},
             },
             {
@@ -33,7 +46,10 @@ class FixtureEvidenceProvider(EvidenceProvider):
                 "url": "https://elections.example.gov/result-clarification",
                 "publisher": "Election Commission",
                 "published_at": now,
-                "snippet": "Officials said the viral post misrepresented the tally and no official result had been announced.",
+                "snippet": (
+                    "Officials said the viral post misrepresented the tally and no "
+                    "official result had been announced."
+                ),
                 "queries": {"result", "clarifies", "official result", "announced"},
             },
         )

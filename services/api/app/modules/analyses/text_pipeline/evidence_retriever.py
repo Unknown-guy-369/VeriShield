@@ -9,10 +9,11 @@ import socket
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
+from email.message import Message
 from html.parser import HTMLParser
-from typing import Any, Protocol
-from urllib.parse import ParseResult, SplitResult, parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
+from typing import Protocol, cast
+from urllib.parse import SplitResult, parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 
 from app.modules.analyses.text_pipeline.providers.base import EvidenceProvider
 from app.modules.analyses.text_pipeline.schemas import (
@@ -33,6 +34,14 @@ class TextPipelineError(Exception):
         self.status_code = status_code
         self.code = code
         self.message = message
+
+
+class _ResponseLike(Protocol):
+    headers: Message
+
+    def read(self, amount: int = -1) -> bytes: ...
+
+    def close(self) -> None: ...
 
 
 class DocumentFetcher(Protocol):
@@ -64,7 +73,9 @@ class SecureHttpFetcher:
             response, status, headers = self._open_request(opener, request)
             # pyrefly: ignore [missing-attribute]
             if 300 <= status < 400 and headers.get("Location"):
-                current_url = self._validate_public_http_url(urljoin(current_url, headers["Location"]))
+                current_url = self._validate_public_http_url(
+                    urljoin(current_url, headers["Location"])
+                )
                 if response is not None:
                     response.close()
                 continue
@@ -74,6 +85,13 @@ class SecureHttpFetcher:
                 if response is not None:
                     response.close()
                 raise TextPipelineError(502, "EVIDENCE_FETCH_FAILED", message)
+
+            if response is None:
+                raise TextPipelineError(
+                    502,
+                    "EVIDENCE_FETCH_FAILED",
+                    "The evidence response was empty.",
+                )
 
             body = response.read(self.max_bytes + 1)[: self.max_bytes]
             try:
@@ -96,44 +114,74 @@ class SecureHttpFetcher:
             response.close()
             return title, publisher, published_at, self._compact_text(text)
 
-        raise TextPipelineError(504, "REDIRECT_LIMIT_EXCEEDED", "The evidence URL redirected too many times.")
+        raise TextPipelineError(
+            504,
+            "REDIRECT_LIMIT_EXCEEDED",
+            "The evidence URL redirected too many times.",
+        )
 
     def _open_request(
         self,
         opener: urllib.request.OpenerDirector,
         request: urllib.request.Request,
-    ) -> tuple[Any, int, Any]:
+    ) -> tuple[_ResponseLike | None, int, Message]:
         try:
-            response = opener.open(request, timeout=self.timeout_seconds)
+            response = cast(_ResponseLike, opener.open(request, timeout=self.timeout_seconds))
             status = getattr(response, "status", 200)
             return response, int(status), response.headers
         except urllib.error.HTTPError as error:
-            return error, int(error.code), error.headers
+            return cast(_ResponseLike, error), int(error.code), error.headers
 
     def _validate_public_http_url(self, value: str) -> str:
         parsed = urlsplit(value)
         if parsed.scheme not in {"http", "https"}:
-            raise TextPipelineError(400, "INVALID_URL_SCHEME", "Only http and https URLs are allowed.")
+            raise TextPipelineError(
+                400,
+                "INVALID_URL_SCHEME",
+                "Only http and https URLs are allowed.",
+            )
         if not parsed.hostname:
             raise TextPipelineError(400, "INVALID_URL", "The evidence URL is missing a host.")
         if parsed.username or parsed.password:
             raise TextPipelineError(400, "INVALID_URL", "Credentialed URLs are not allowed.")
         hostname = parsed.hostname.lower()
-        if hostname in {"localhost", "localhost.localdomain"} or hostname.endswith(".local") or hostname.endswith(".internal"):
-            raise TextPipelineError(400, "PRIVATE_URL_BLOCKED", "Local network URLs are not allowed.")
+        if (
+            hostname in {"localhost", "localhost.localdomain"}
+            or hostname.endswith(".local")
+            or hostname.endswith(".internal")
+        ):
+            raise TextPipelineError(
+                400, "PRIVATE_URL_BLOCKED", "Local network URLs are not allowed."
+            )
         if self._is_blocked_ip(hostname):
-            raise TextPipelineError(400, "PRIVATE_URL_BLOCKED", "Private or loopback IP addresses are not allowed.")
+            raise TextPipelineError(
+                400,
+                "PRIVATE_URL_BLOCKED",
+                "Private or loopback IP addresses are not allowed.",
+            )
         try:
             infos = socket.getaddrinfo(hostname, None, type=socket.SOCK_STREAM)
         except socket.gaierror as error:
-            raise TextPipelineError(400, "UNRESOLVABLE_HOST", "The evidence host could not be resolved.") from error
+            raise TextPipelineError(
+                400,
+                "UNRESOLVABLE_HOST",
+                "The evidence host could not be resolved.",
+            ) from error
         addresses = {item[4][0] for item in infos if item[4]}
         if not addresses:
-            raise TextPipelineError(400, "UNRESOLVABLE_HOST", "The evidence host could not be resolved.")
+            raise TextPipelineError(
+                400,
+                "UNRESOLVABLE_HOST",
+                "The evidence host could not be resolved.",
+            )
         for address in addresses:
             # pyrefly: ignore [bad-argument-type]
             if self._is_blocked_ip(str(address)):
-                raise TextPipelineError(400, "PRIVATE_URL_BLOCKED", "Private or loopback IP addresses are not allowed.")
+                raise TextPipelineError(
+                    400,
+                    "PRIVATE_URL_BLOCKED",
+                    "Private or loopback IP addresses are not allowed.",
+                )
         # pyrefly: ignore [bad-argument-type]
         return self._canonical_url(parsed)
 
@@ -236,53 +284,91 @@ class EvidenceRetriever:
     fetcher: DocumentFetcher
     max_results_per_claim: int = 6
     max_results_per_query: int = 3
+    max_search_concurrency: int = 6
+    max_fetch_concurrency: int = 8
 
     async def retrieve(self, plans: tuple[ClaimQueryPlan, ...]) -> tuple[EvidenceItem, ...]:
         evidence: list[EvidenceItem] = []
         seen: set[str] = set()
-        claim_counts: dict[str, int] = {}
+        search_semaphore = asyncio.Semaphore(self.max_search_concurrency)
+        fetch_semaphore = asyncio.Semaphore(self.max_fetch_concurrency)
+
         for plan in plans:
-            claim_counts.setdefault(plan.claim_id, 0)
-            for query in plan.queries:
-                for provider in self.providers:
-                    provider_names = {provider.name, *provider.provider_hints}
-                    if query.provider_hints and provider_names.isdisjoint(query.provider_hints):
-                        continue
-                    try:
-                        results = await provider.search(query.query, limit=self.max_results_per_query)
-                    except Exception as error:
-                        logger.warning(
-                            "evidence provider failed provider=%s claim_id=%s query=%r error=%s",
-                            provider.name,
-                            plan.claim_id,
-                            query.query,
-                            error,
-                        )
-                        continue
-                    for result in results:
-                        try:
-                            item = await self._convert_result(plan.claim_id, query.query, result)
-                        except Exception as error:
-                            logger.warning(
-                                "evidence result skipped provider=%s claim_id=%s url=%s error=%s",
-                                result.provider_name,
-                                plan.claim_id,
-                                result.url,
-                                error,
-                            )
-                            continue
-                        if item is None or item.dedupe_key in seen:
-                            continue
-                        seen.add(item.dedupe_key)
-                        evidence.append(item)
-                        claim_counts[plan.claim_id] += 1
-                        if claim_counts[plan.claim_id] >= self.max_results_per_claim:
-                            break
-                    if claim_counts[plan.claim_id] >= self.max_results_per_claim:
-                        break
+            candidates = await self._search_plan(plan, search_semaphore)
+            converted = await asyncio.gather(
+                *(
+                    self._convert_result(plan.claim_id, query, result, fetch_semaphore)
+                    for query, result in candidates
+                ),
+                return_exceptions=True,
+            )
+            claim_count = 0
+            for item in converted:
+                if isinstance(item, BaseException):
+                    logger.warning(
+                        "evidence result skipped claim_id=%s error=%s",
+                        plan.claim_id,
+                        item,
+                    )
+                    continue
+                if item is None or item.dedupe_key in seen:
+                    continue
+                seen.add(item.dedupe_key)
+                evidence.append(item)
+                claim_count += 1
+                if claim_count >= self.max_results_per_claim:
+                    break
         return tuple(evidence)
 
-    async def _convert_result(self, claim_id: str, query: str, result: SearchResult) -> EvidenceItem | None:
+    async def _search_plan(
+        self,
+        plan: ClaimQueryPlan,
+        semaphore: asyncio.Semaphore,
+    ) -> tuple[tuple[str, SearchResult], ...]:
+        requests: list[tuple[str, EvidenceProvider]] = []
+        for planned_query in plan.queries:
+            for provider in self.providers:
+                provider_names = {provider.name, *provider.provider_hints}
+                if planned_query.provider_hints and provider_names.isdisjoint(
+                    planned_query.provider_hints
+                ):
+                    continue
+                requests.append((planned_query.query, provider))
+
+        results = await asyncio.gather(
+            *(self._search_provider(query, provider, semaphore) for query, provider in requests),
+            return_exceptions=True,
+        )
+        candidates: list[tuple[str, SearchResult]] = []
+        for (query_text, provider), result in zip(requests, results, strict=True):
+            if isinstance(result, BaseException):
+                logger.warning(
+                    "evidence provider failed provider=%s claim_id=%s query=%r error=%s",
+                    provider.name,
+                    plan.claim_id,
+                    query_text,
+                    result,
+                )
+                continue
+            candidates.extend((query_text, item) for item in result)
+        return tuple(candidates)
+
+    async def _search_provider(
+        self,
+        query: str,
+        provider: EvidenceProvider,
+        semaphore: asyncio.Semaphore,
+    ) -> tuple[SearchResult, ...]:
+        async with semaphore:
+            return await provider.search(query, limit=self.max_results_per_query)
+
+    async def _convert_result(
+        self,
+        claim_id: str,
+        query: str,
+        result: SearchResult,
+        fetch_semaphore: asyncio.Semaphore,
+    ) -> EvidenceItem | None:
         canonical_url = self._canonical_dedupe_url(result.url)
         if canonical_url is None:
             return None
@@ -292,9 +378,13 @@ class EvidenceRetriever:
         passage = result.snippet.strip()
         if result.fetchable:
             try:
-                fetched_title, fetched_publisher, fetched_published_at, fetched_passage = await self.fetcher.fetch(
-                    result.url
-                )
+                async with fetch_semaphore:
+                    (
+                        fetched_title,
+                        fetched_publisher,
+                        fetched_published_at,
+                        fetched_passage,
+                    ) = await self.fetcher.fetch(result.url)
                 title = fetched_title or title
                 publisher = fetched_publisher or publisher
                 published_at = fetched_published_at or published_at
@@ -302,12 +392,19 @@ class EvidenceRetriever:
             except TextPipelineError:
                 if not passage:
                     raise
-        source_reliability = self._source_reliability(result.provider_name, result.publisher, result.url)
+        source_reliability = self._source_reliability(
+            result.provider_name,
+            result.publisher,
+            result.url,
+        )
         relevance = max(0.0, min(1.0, result.relevance_hint))
-        retrieval_confidence = max(0.0, min(1.0, 0.55 + relevance * 0.35 + (source_reliability / 100) * 0.1))
+        retrieval_confidence = max(
+            0.0,
+            min(1.0, 0.55 + relevance * 0.35 + (source_reliability / 100) * 0.1),
+        )
         dedupe_key = self._dedupe_key(canonical_url, title, publisher, passage)
         return EvidenceItem(
-            id=hashlib.sha256(f"{claim_id}|{dedupe_key}".encode("utf-8")).hexdigest()[:16],
+            id=hashlib.sha256(f"{claim_id}|{dedupe_key}".encode()).hexdigest()[:16],
             claim_id=claim_id,
             stance=EvidenceStance.INSUFFICIENT,
             title=title.strip() or result.title,
@@ -338,7 +435,13 @@ class EvidenceRetriever:
             )
         )
 
-    def _dedupe_key(self, canonical_url: str, title: str, publisher: str | None, passage: str) -> str:
+    def _dedupe_key(
+        self,
+        canonical_url: str,
+        title: str,
+        publisher: str | None,
+        passage: str,
+    ) -> str:
         normalized = "|".join(
             [
                 canonical_url,
@@ -362,6 +465,9 @@ class EvidenceRetriever:
             score += 20
         if host.endswith(".edu") or ".edu." in host:
             score += 10
-        if publisher and any(token in publisher.lower() for token in ("government", "ministry", "commission", "department")):
+        if publisher and any(
+            token in publisher.lower()
+            for token in ("government", "ministry", "commission", "department")
+        ):
             score += 15
         return max(0, min(100, score))

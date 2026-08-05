@@ -14,6 +14,11 @@ SINGLE_CAPITALIZED_RE = re.compile(r"\b[A-Z][a-z]{2,}\b")
 ACRONYM_RE = re.compile(r"\b[A-Z]{2,}(?:\d+)?\b")
 NUMBER_RE = re.compile(r"\b\d+(?:[.,:/-]\d+)*(?:%|km|kg|k|m|bn|crore|lakh|million|billion)?\b")
 URL_RE = re.compile(r"https?://\S+")
+SUBJECT_ENTITY_RE = re.compile(
+    r"^(?:the|a|an)\s+(.+?)\s+"
+    r"(?:is|was|were|has|have|reported|announced|said|showed|shows|confirmed|denied|released)\b",
+    re.I,
+)
 
 OPINION_PREFIXES = (
     "i think",
@@ -113,7 +118,11 @@ class ClaimExtractor:
         word_count = len(segment.split())
         if word_count < 4:
             return False
-        if re.search(r"\b(is|was|were|has|have|reported|announced|said|showed|shows|confirmed|denied|released)\b", segment, re.I):
+        if re.search(
+            r"\b(is|was|were|has|have|reported|announced|said|showed|shows|confirmed|denied|released)\b",
+            segment,
+            re.I,
+        ):
             return True
         if NUMBER_RE.search(segment) or CAPITALIZED_PHRASE_RE.search(segment):
             return True
@@ -124,6 +133,9 @@ class ClaimExtractor:
         raw_entities.extend(QUOTED_TEXT_RE.findall(segment))
         raw_entities.extend(CAPITALIZED_PHRASE_RE.findall(segment))
         raw_entities.extend(SINGLE_CAPITALIZED_RE.findall(segment))
+        subject_match = SUBJECT_ENTITY_RE.search(segment)
+        if subject_match:
+            raw_entities.append(subject_match.group(1))
         raw_entities.extend(ACRONYM_RE.findall(segment))
         raw_entities.extend(NUMBER_RE.findall(segment))
         raw_entities.extend(URL_RE.findall(segment))
