@@ -11,6 +11,15 @@ from app.modules.analyses.repository import (
     SqlAlchemyAnalysisRepository,
 )
 from app.modules.analyses.service import AnalysisService
+from app.modules.media_forensics.image_analyzer import ImageAnalyzer
+from app.modules.media_forensics.model_adapter import (
+    BaseModelAdapter,
+    MockModelAdapter,
+    ONNXModelAdapter,
+)
+from app.modules.media_forensics.repository import MemoryMediaForensicsRepository
+from app.modules.media_forensics.service import MediaForensicsService
+from app.modules.media_forensics.video_analyzer import VideoAnalyzer
 from app.storage.base import StorageAdapter
 from app.storage.fallback import FallbackStorageAdapter
 from app.storage.local import LocalStorageAdapter
@@ -24,6 +33,7 @@ class AppContainer:
     repository: AnalysisRepository
     storage: StorageAdapter
     analysis_service: AnalysisService
+    media_forensics_service: MediaForensicsService
 
     @classmethod
     def build(cls, settings: Settings) -> "AppContainer":
@@ -56,12 +66,35 @@ class AppContainer:
             )
         else:
             storage = LocalStorageAdapter(settings.local_upload_dir)
+
+        # Media Forensics Setup
+        # For MVP, we default to MockModelAdapter if not configured, or if USE_LIVE_MODEL=False
+        use_live_model = getattr(settings, "use_live_model", False)
+        model_adapter: BaseModelAdapter
+        if use_live_model:
+            model_adapter = ONNXModelAdapter(getattr(settings, "onnx_model_path", "model.onnx"))
+        else:
+            model_adapter = MockModelAdapter()
+            
+        forensics_repository = MemoryMediaForensicsRepository()
+        image_analyzer = ImageAnalyzer(model_adapter)
+        video_analyzer = VideoAnalyzer(model_adapter)
+        
+        media_forensics_service = MediaForensicsService(
+            analysis_repository=repository,
+            forensics_repository=forensics_repository,
+            storage=storage,
+            image_analyzer=image_analyzer,
+            video_analyzer=video_analyzer,
+        )
+
         return cls(
             settings=settings,
             database=database,
             repository=repository,
             storage=storage,
             analysis_service=AnalysisService(repository, storage, settings),
+            media_forensics_service=media_forensics_service,
         )
 
     async def close(self) -> None:
@@ -75,3 +108,7 @@ def get_container(request: Request) -> AppContainer:
 
 def get_analysis_service(request: Request) -> AnalysisService:
     return get_container(request).analysis_service
+
+def get_media_forensics_service(request: Request) -> MediaForensicsService:
+    return get_container(request).media_forensics_service
+

@@ -18,3 +18,9 @@ class LocalStorageAdapter(StorageAdapter):
     async def remove(self, stored: StoredObject) -> None:
         target = self.root / stored.object_key
         await asyncio.to_thread(target.unlink, missing_ok=True)
+
+    async def read(self, object_key: str) -> bytes:
+        target = self.root / object_key
+        if not str(target.resolve()).startswith(str(self.root.resolve())):
+            raise ValueError("Path traversal attempt detected")
+        return await asyncio.to_thread(target.read_bytes)

@@ -9,7 +9,7 @@ from starlette.datastructures import UploadFile
 
 from app.core.errors import AppError
 from app.dependencies import get_analysis_service
-from app.modules.analyses.schemas import AnalysisRecord, CreateAnalysisRequest
+from app.modules.analyses.schemas import AnalysisRecord, AnalysisType, CreateAnalysisRequest
 from app.modules.analyses.service import AnalysisService
 
 router = APIRouter(prefix="/analyses", tags=["analyses"])
@@ -22,6 +22,8 @@ def validate_payload(payload: Any) -> CreateAnalysisRequest:
     except ValidationError as error:
         messages = [str(item.get("msg", "Invalid request.")) for item in error.errors()]
         raise AppError(400, "VALIDATION_ERROR", " ".join(messages)) from error
+
+
 
 
 @router.post("", response_model=AnalysisRecord, status_code=201)
@@ -58,6 +60,12 @@ async def create_analysis(
         )
 
     record = await service.create(validate_payload(payload), upload)
+
+    if record.type in (AnalysisType.IMAGE, AnalysisType.VIDEO):
+        from app.dependencies import get_media_forensics_service
+        media_service = get_media_forensics_service(request)
+        background_tasks.add_task(media_service.process_media, record.id)
+        
     logger.info(
         "analysis accepted id=%s type=%s status=%s progress=%s",
         record.id,
@@ -78,6 +86,17 @@ async def get_analysis(
     return await service.find_one(analysis_id)
 
 
+@router.get("/{analysis_id}/media")
+async def get_media_forensics(
+    analysis_id: UUID,
+    request: Request,
+) -> Any:
+    from app.dependencies import get_media_forensics_service
+    service = get_media_forensics_service(request)
+    result = await service.forensics_repository.get_result(analysis_id)
+    if not result:
+        raise AppError(404, "NOT_FOUND", "Media forensics result not found or not completed yet.")
+    return result
 @router.get("/{analysis_id}/report", response_model=AnalysisRecord)
 async def get_analysis_report(
     analysis_id: UUID,
